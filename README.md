@@ -6,6 +6,7 @@
 
 # Usage (version 0.1, awful architecture I know :D)
 
+0. start the backend with `flask --app backend.app run -p 5678`, and the frontend with `npm start`
 1. Take an exposure with evora
 2. Put the focuser positon in the textbox and send it the backend
 2.1 The backend will fetch the image from evora
