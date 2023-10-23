@@ -2,6 +2,7 @@ import numpy as np
 from astropy.io import fits
 import sys
 import shutil
+import os
 
 
 def rename_file(directory, old_name, new_name):
