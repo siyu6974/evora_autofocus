@@ -12,8 +12,8 @@ function App() {
   const [img, setImg] = useState();
 
   useEffect(() => {
-    // Generate a random session id
-    const sessionId = Array.from(window.crypto.getRandomValues(new Uint32Array(10)), (x) => x.toString(16)).join('');
+    // Generate a timestamp session id
+    const sessionId = Date.now().toString();
     setSid(sessionId);
   }, []);
 
