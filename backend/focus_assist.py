@@ -128,7 +128,7 @@ def stat_for_image(fits_file_url):
     return median_fwhm, median_sep_hfd, median_my_hfd, median_phd_hfd
 
 
-def find_focus_position(focuser_positions, fwhm_curve_dp, hfd_curve_dps, plot=False):
+def find_focus_position(focuser_positions, fwhm_curve_dp, hfd_curve_dps):
     """
     Find the focus position that minimizes the FWHM and HFD curves.
     hfd_curve_dps is a dict of HFD curves for different methods.
@@ -136,40 +136,39 @@ def find_focus_position(focuser_positions, fwhm_curve_dp, hfd_curve_dps, plot=Fa
     fwhm_fit = np.polyfit(focuser_positions, fwhm_curve_dp, 2)
     fwhm_min_value = -fwhm_fit[1] / (2 * fwhm_fit[0])
 
-    print(f"FWHM predicted focuser position is {fwhm_min_value:.2f}")
+    logging.info(f"FWHM predicted focuser position is {fwhm_min_value:.2f}")
 
     hfd_fits = {}
     hfd_min_values = {}
     for method, hfd_curve_dp in hfd_curve_dps.items():    
         hfd_fit = np.polyfit(focuser_positions, hfd_curve_dp, 2)
         hfd_min_value = -hfd_fit[1] / (2 * hfd_fit[0])
-        print(f"{method} HFD predicted focuser position is {hfd_min_value:.2f}")
+        logging.info(f"{method} HFD predicted focuser position is {hfd_min_value:.2f}")
         hfd_fits[method] = hfd_fit
         hfd_min_values[method] = hfd_min_value
 
-    image_data = None
-    if plot:
-        image_data_value = plot_fit(focuser_positions, fwhm_curve_dp, hfd_curve_dps, fwhm_fit, hfd_fits)
-
-    return fwhm_min_value, hfd_min_values, image_data_value
+    return fwhm_min_value, hfd_min_values, fwhm_fit, hfd_fits
 
 
 def plot_fit(focuser_positions, fwhm_curve_dp, hfd_curve_dps, fwhm_fit, hfd_fits):
+    should_plot_fit = len(fwhm_fit) > 0
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
+    ax1.set_ylabel('FWHM (pixels)')
+    ax1.set_title('Focus vs FWHM')
+    ax2.set_xlabel('Focus position')
+    ax2.set_ylabel('HFD (pixels)')
+    ax2.set_title('Focus vs HFD')
 
     x_fit = np.linspace(min(focuser_positions), max(focuser_positions), 100)
 
     # plot FWHM curve and fit
     ax1.plot(focuser_positions, fwhm_curve_dp, 'o')
-    y_fit = np.polyval(fwhm_fit, x_fit)
-    ax1.plot(x_fit, y_fit, label='Fit')
-    ax1.set_ylabel('FWHM (pixels)')
-    ax1.set_title('Focus vs FWHM')
-
-    # mark the minimum value of the fits
-    fwhm_min_value = -fwhm_fit[1] / (2 * fwhm_fit[0])
-    ax1.axvline(fwhm_min_value, color='r', linestyle='--', label=f'Minimum FWHM: {fwhm_min_value:.2f}')
-
+    if should_plot_fit:
+        y_fit = np.polyval(fwhm_fit, x_fit)
+        ax1.plot(x_fit, y_fit, label='Fit')
+        # mark the minimum value of the fits
+        fwhm_min_value = -fwhm_fit[1] / (2 * fwhm_fit[0])
+        ax1.axvline(fwhm_min_value, color='r', linestyle='--', label=f'Minimum FWHM: {fwhm_min_value:.2f}')
 
     for method, hfd_curve_dp in hfd_curve_dps.items():    
         if method == 'sep':
@@ -180,16 +179,12 @@ def plot_fit(focuser_positions, fwhm_curve_dp, hfd_curve_dps, fwhm_fit, hfd_fits
             c = 'b'
         # plot HFD curves and fits
         ax2.plot(focuser_positions, hfd_curve_dp, 'o', color=c, label=f'{method} HFD')
-        fit = hfd_fits[method]
-        y_fit = np.polyval(fit, x_fit)
-        ax2.plot(x_fit, y_fit, color=c, label=f'{method} HFD Fit')
-        hfd_min_value = -fit[1] / (2 * fit[0])
-
-        ax2.axvline(hfd_min_value, color=c, linestyle='--', label=f'Minimum {method} HFD: {hfd_min_value:.2f}')
-
-    ax2.set_xlabel('Focus position')
-    ax2.set_ylabel('HFD (pixels)')
-    ax2.set_title('Focus vs HFD')
+        if should_plot_fit:
+            fit = hfd_fits[method]
+            y_fit = np.polyval(fit, x_fit)
+            ax2.plot(x_fit, y_fit, color=c, label=f'{method} HFD Fit')
+            hfd_min_value = -fit[1] / (2 * fit[0])
+            ax2.axvline(hfd_min_value, color=c, linestyle='--', label=f'Minimum {method} HFD: {hfd_min_value:.2f}')
 
     ax1.legend()
     ax2.legend()

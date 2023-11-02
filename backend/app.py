@@ -3,7 +3,7 @@ from flask_cors import CORS
 from flask import send_file
 from flask import current_app, flash, jsonify, make_response, redirect, request, url_for
 
-from focus_assist import find_focus_position, stat_for_image
+from focus_assist import find_focus_position, stat_for_image, plot_fit
 
 import random
 from glob import glob
@@ -46,13 +46,31 @@ def analyze():
         "my": [dp['my'] for dp in session.hfd_metrics],
         "PHD": [dp['PHD'] for dp in session.hfd_metrics]
     }
-    fwhm_min, hfd_min, image = find_focus_position(focuser_positons, fwhm_metrics, hfd_curve_dps, plot=True)
+    fwhm_min, hfd_min, fwhm_fit, hfd_fits = find_focus_position(focuser_positons, fwhm_metrics, hfd_curve_dps)
+    SessionStorage[sid].fwhm_fit = fwhm_fit
+    SessionStorage[sid].hfd_fits = hfd_fits
 
-    rtn = jsonify({
+    return jsonify({
         "fwhm_min": fwhm_min, 
         "hfd_min": hfd_min
     })   
 
+
+@app.route('/plot/<sid>')
+def retrieve_plot(sid):
+    if sid not in SessionStorage:
+        return Response(status=404)
+    session = SessionStorage[sid]
+    fwhm_metrics = session.fwhm_metrics
+    focuser_positons = session.focuser_positons
+    fwhm_fit = session.fwhm_fit
+    hfd_fits = session.hfd_fits
+    hfd_curve_dps = {
+        "sep": [dp['sep'] for dp in session.hfd_metrics],
+        "my": [dp['my'] for dp in session.hfd_metrics],
+        "PHD": [dp['PHD'] for dp in session.hfd_metrics]
+    }
+    image = plot_fit(focuser_positons, fwhm_metrics, hfd_curve_dps, fwhm_fit, hfd_fits)
     return Response(image, mimetype='image/png')
 
 

@@ -8,7 +8,10 @@ class FocusSession():
     fwhm_metrics: list = field(default_factory=list)   # list of values
     hfd_metrics: list = field(default_factory=list)   # list of dicts containing values for each method
     files: list = field(default_factory=list)
-
+    
+    fwhm_fit: list = field(default_factory=list)  
+    hfd_fits: list = field(default_factory=dict)
+    
     def serialize(self):
         return {
             "id": self.id,

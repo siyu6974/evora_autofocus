@@ -44,6 +44,7 @@ function App() {
       })
       .then(data => {
         console.log('Response from backend:', data);
+        fetchPlot();
       })
       .catch(error => {
         console.error('Error sending request to backend:', error);
@@ -59,6 +60,21 @@ function App() {
       body: JSON.stringify({
         sid
       })
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      return response.json();
+    })
+    .then(data => {
+      console.log('Response from backend:', data);
+      fetchPlot();
+    })
+  };
+
+  const fetchPlot = async () => {
+    const res = await fetch(`${backendUrl}/plot/${sid}`, {
     });
     const imageBlob = await res.blob();
     const imageObjectURL = URL.createObjectURL(imageBlob);
