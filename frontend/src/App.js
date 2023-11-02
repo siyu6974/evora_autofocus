@@ -11,10 +11,14 @@ function App() {
   const [sid, setSid] = useState('');
   const [img, setImg] = useState();
 
+  const refreshSid = () => {
+        // Generate a timestamp session id
+        const sessionId = Date.now().toString();
+        setSid(sessionId);
+  };
+
   useEffect(() => {
-    // Generate a timestamp session id
-    const sessionId = Date.now().toString();
-    setSid(sessionId);
+    refreshSid();
   }, []);
 
   const handleFilenameChange = (event) => {
@@ -103,9 +107,11 @@ function App() {
       })
       .then(data => {
         console.log('Response from backend:', data);
+        refreshSid();
       })
       .catch(error => {
         console.error('Error sending request to backend:', error);
+        refreshSid();
       });
   };
 
