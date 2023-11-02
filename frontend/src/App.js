@@ -7,23 +7,26 @@ const backendUrl = 'http://localhost:5678';
 
 function App() {
   const [focuserPosition, setFocuserPosition] = useState('');
+  const [filename, setFilename] = useState('');
 
-
+  const handleFilenameChange = (event) => {
+    setFilename(event.target.value);
+  };
   const handleFocuserPositionChange = (event) => {
     setFocuserPosition(event.target.value);
 
   };
 
   const handleSendButtonClick = () => {
-    // Send request to backend with focuserPosition
-    console.log(`Sending request to backend with focuserPosition: ${focuserPosition}`);
+    // Send request to backend with focuserPosition and filename
+    console.log(`Sending request to backend with focuserPosition: ${focuserPosition} and filename: ${filename}`);
 
-    fetch(`${backendUrl}/api/focus_position`, {
+    fetch(`${backendUrl}/api/add_focus_position`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ focuserPosition })
+      body: JSON.stringify({ focuserPosition, filename })
     })
       .then(response => {
         if (!response.ok) {
@@ -87,9 +90,12 @@ function App() {
       <header className="App-header">
         <img src={logo} className="App-logo" alt="logo" />
         <div>
+          <label htmlFor="filename">File name:</label>
+          <input type="text" id="filename" value={filename} onChange={handleFilenameChange} />
           <label htmlFor="focuserPosition">Focuser Position:</label>
           <input type="text" id="focuserPosition" value={focuserPosition} onChange={handleFocuserPositionChange} />
           <button onClick={handleSendButtonClick}>Send</button>
+          
         </div>
         <button onClick={handleAnalyzeButtonClick}>Analyze</button>
         <button onClick={handleResetButtonClick}>Reset</button>
