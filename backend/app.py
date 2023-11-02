@@ -3,25 +3,20 @@ from flask_cors import CORS
 from flask import send_file
 from flask import current_app, flash, jsonify, make_response, redirect, request, url_for
 
-from astropy.io import fits
-from focus_assist import extract_source, calc_hfd, calc_fwhm, APERTURE_R, find_focus_position
-from photutils.aperture import aperture_photometry, CircularAperture, CircularAnnulus
-import numpy as np
+from focus_assist import find_focus_position, stat_for_image
 
 import random
 from glob import glob
-import sep
+import logging
+logging.basicConfig(level=logging.INFO)
+import settings
+from models import FocusSession
 
 
 app = Flask(__name__)
 CORS(app)
 
-fwhm_curve_dp = []
-sep_hfd_curve_dp = []
-my_hfd_curve_dp = []
-phd_hfd_curve_dp = []
-
-focuser_positons = []
+SessionStorage: {str: FocusSession} = {}
 
 @app.route('/')
 def index():
@@ -37,20 +32,23 @@ from flask import Response
 
 @app.route('/api/analyze', methods=['POST'])
 def analyze():
-    global fwhm_curve_dp
-    global sep_hfd_curve_dp
-    global my_hfd_curve_dp
-    global phd_hfd_curve_dp
-    global focuser_positons
+    payload = request.get_json()
+    sid = payload['sid']
+    if sid not in SessionStorage:
+        return Response(status=404)
+    
+    session = SessionStorage[sid]
+    fwhm_metrics = session.fwhm_metrics
+    focuser_positons = session.focuser_positons
 
     hfd_curve_dps = {
-        "sep": sep_hfd_curve_dp,
-        "my": my_hfd_curve_dp,
-        "PHD": phd_hfd_curve_dp
+        "sep": [dp['sep'] for dp in session.hfd_metrics],
+        "my": [dp['my'] for dp in session.hfd_metrics],
+        "PHD": [dp['PHD'] for dp in session.hfd_metrics]
     }
-    fwhm_min, hfd_min, image = find_focus_position(focuser_positons, fwhm_curve_dp, hfd_curve_dps, plot=True)
+    fwhm_min, hfd_min, image = find_focus_position(focuser_positons, fwhm_metrics, hfd_curve_dps, plot=True)
 
-    payload = jsonify({
+    rtn = jsonify({
         "fwhm_min": fwhm_min, 
         "hfd_min": hfd_min
     })   
@@ -60,85 +58,45 @@ def analyze():
 
 @app.route('/api/reset', methods=['POST'])
 def reset():
-    global fwhm_curve_dp
-    global sep_hfd_curve_dp
-    global my_hfd_curve_dp
-    global phd_hfd_curve_dp
-    global focuser_positons
-    fwhm_curve_dp = []
-    hfd_curve_dp = []
-    focuser_positons = []
+    payload = request.get_json()
+    sid = payload['sid']
+    if sid in SessionStorage:
+        del SessionStorage[sid]
     return jsonify({
-        "fwhm_curve_dp": fwhm_curve_dp, 
-        "hfd_curve_dp": hfd_curve_dp,
-        "focuser_positons": focuser_positons
     })
 
 
 @app.route('/api/add_focus_position', methods=['POST'])
 def focus_position():
-    global fwhm_curve_dp
-    global sep_hfd_curve_dp
-    global my_hfd_curve_dp
-    global phd_hfd_curve_dp
-    global focuser_positons
+    payload = request.get_json()
+    sid = payload['sid']
+    if sid not in SessionStorage:
+        SessionStorage[sid] = FocusSession(id=sid)
+    session = SessionStorage[sid]
 
-    data = request.get_json()
-    filename = data['filename']
-    focuser_position = int(data['focuserPosition'])
-    focuser_positons.append(focuser_position)
+    filename = payload['filename']
+    focuser_position = int(payload['focuserPosition'])
+    session.focuser_positons.append(focuser_position)
 
-    fits_file_url = "http://72.233.250.83/data/ecam/" + filename
-    print(fits_file_url)
-    # images = glob('/Users/siyu/Proj/evora_autofocus/focus_test/manual/*.fits')
-    # fits_file_url = random.choice(images)
+    logging.info(f"filename: {filename} focuser_position: {focuser_position}")
 
-    hdul = fits.open(fits_file_url, cache=False)
-    data = hdul[0].data
-    sources, signal = extract_source(data)
+    fits_file_url = settings.BASEFILE_PATH + filename
 
-    x_coords = sources['x']
-    y_coords = sources['y']
-    x,y = list(zip(x_coords, y_coords))[0]
+    if settings.DEBUG:
+        images = glob('/Users/siyu/Proj/evora_autofocus/focus_test/manual/*.fits')
+        fits_file_url = random.choice(images)
 
-    # SEP HFD
-    hfrs, flag = sep.flux_radius(signal, sources['x'], sources['y'], 
-                            6.*sources['a'],
-                            frac=0.5, 
-                            subpix=5)
-    median_sep_hfd = np.median(hfrs[flag==0]) * 2
-    sep_hfd_curve_dp.append(median_sep_hfd)
-
-    # FWHM and other HFD
-    fwhm_values = []
-    my_hfd_values = []
-    phd_hfd_values = []
-    for x, y in zip(x_coords, y_coords):
-        aperture = CircularAperture((x, y), r=APERTURE_R)
-        fwhm_value = calc_fwhm(signal, aperture)
-        fwhm_values.append(fwhm_value)
-
-        # HFD
-        my_hfd, phd_hfd = calc_hfd(signal, aperture)
-        my_hfd_values.append(my_hfd)
-        phd_hfd_values.append(phd_hfd)
-    
-    fwhm_values = np.array(fwhm_values)
-    median_fwhm = np.median(fwhm_values)
-    fwhm_curve_dp.append(median_fwhm)
-
-    median_my_hfd = np.median(my_hfd_values)
-    my_hfd_curve_dp.append(median_my_hfd)
-    median_phd_hfd = np.median(phd_hfd_values)
-    phd_hfd_curve_dp.append(median_phd_hfd)
-    
-    return jsonify({
-        "fwhm_curve_dp": fwhm_curve_dp, 
-        "sep_hfd_curve_dp": sep_hfd_curve_dp,
-        "my_hfd_curve_dp": my_hfd_curve_dp,
-        "phd_hfd_curve_dp": phd_hfd_curve_dp,
-        "focuser_positons": focuser_positons
+    median_fwhm, median_sep_hfd, median_my_hfd, median_phd_hfd = stat_for_image(fits_file_url)
+    session.hfd_metrics.append({
+        "sep": median_sep_hfd,
+        "my": median_my_hfd,
+        "PHD": median_phd_hfd
     })
+    session.fwhm_metrics.append(median_fwhm)
+    session.files.append(filename)
+    logging.info(f"median_fwhm: {median_fwhm} median_sep_hfd: {median_sep_hfd} median_my_hfd: {median_my_hfd} median_phd_hfd: {median_phd_hfd}")
+    
+    return jsonify(session.serialize())
 
 
 

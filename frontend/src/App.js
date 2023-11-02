@@ -1,13 +1,21 @@
 import logo from './logo.svg';
 import './App.css';
-import { useState } from 'react';
-import React, { useEffect } from "react";
+import { useState, useEffect } from 'react';
+import React from "react";
 
 const backendUrl = 'http://localhost:5678';
 
 function App() {
   const [focuserPosition, setFocuserPosition] = useState('');
   const [filename, setFilename] = useState('');
+  const [sid, setSid] = useState('');
+  const [img, setImg] = useState();
+
+  useEffect(() => {
+    // Generate a random session id
+    const sessionId = Array.from(window.crypto.getRandomValues(new Uint32Array(10)), (x) => x.toString(16)).join('');
+    setSid(sessionId);
+  }, []);
 
   const handleFilenameChange = (event) => {
     setFilename(event.target.value);
@@ -26,7 +34,7 @@ function App() {
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ focuserPosition, filename })
+      body: JSON.stringify({ sid, focuserPosition, filename })
     })
       .then(response => {
         if (!response.ok) {
@@ -42,16 +50,15 @@ function App() {
       });
   };
 
-
-  const [img, setImg] = useState();
-
   const handleAnalyzeButtonClick = async () => {
     const res = await fetch(`${backendUrl}/api/analyze`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({})
+      body: JSON.stringify({
+        sid
+      })
     });
     const imageBlob = await res.blob();
     const imageObjectURL = URL.createObjectURL(imageBlob);
@@ -68,7 +75,9 @@ function App() {
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({})
+      body: JSON.stringify({
+        sid
+      })
     })
       .then(response => {
         if (!response.ok) {

@@ -4,7 +4,8 @@ import matplotlib.pyplot as plt
 from astropy.io import fits
 import io
 import sep
-
+from settings import SEP_MIN_AREA
+import logging
 
 def extract_source(data, max_sources=50):
     # Calculate background statistics
@@ -12,7 +13,7 @@ def extract_source(data, max_sources=50):
 
     bkg = sep.Background(data)
     signal = data - bkg
-    sources = sep.extract(signal, 1.5, err=bkg.globalrms, minarea=40)
+    sources = sep.extract(signal, 1.5, err=bkg.globalrms, minarea=SEP_MIN_AREA)
 
     # Keep at most max_sources sources distributed evenly
     if len(sources) > max_sources:
@@ -59,7 +60,7 @@ def calc_hfd(signal, aperture):
         total_flux = np.sum(roi_data)
         my_hfd = dist_weighted_flux / total_flux * 2
     except Exception as e:
-        print(e)
+        logging.error(e)
         my_hfd = -10
 
     try:
@@ -78,7 +79,7 @@ def calc_hfd(signal, aperture):
 
         phd_hfd = (prev_dist + (half_flux - prev_pix) * s) * 2
     except Exception as e:
-        print(e)
+        logging.error(e)
         phd_hfd = -10
     return my_hfd, phd_hfd
 
@@ -89,6 +90,43 @@ def calc_fwhm(signal, aperture):
     rp = RadialProfile(signal, xycen, edge_radii, mask=None)
     fwhm_value = rp.gaussian_fwhm
     return fwhm_value
+
+
+def stat_for_image(fits_file_url):
+    hdul = fits.open(fits_file_url, cache=False)
+    data = hdul[0].data
+    sources, signal = extract_source(data)
+
+    x_coords = sources['x']
+    y_coords = sources['y']
+    x,y = list(zip(x_coords, y_coords))[0]
+
+    # SEP HFD
+    hfrs, flag = sep.flux_radius(signal, sources['x'], sources['y'], 
+                            6.*sources['a'],
+                            frac=0.5, 
+                            subpix=5)
+    median_sep_hfd = np.median(hfrs[flag==0]) * 2
+
+    # FWHM and other HFD
+    fwhm_values = []
+    my_hfd_values = []
+    phd_hfd_values = []
+    for x, y in zip(x_coords, y_coords):
+        aperture = CircularAperture((x, y), r=APERTURE_R)
+        fwhm_value = calc_fwhm(signal, aperture)
+        fwhm_values.append(fwhm_value)
+
+        # HFD
+        my_hfd, phd_hfd = calc_hfd(signal, aperture)
+        my_hfd_values.append(my_hfd)
+        phd_hfd_values.append(phd_hfd)
+    
+    median_fwhm = np.median(fwhm_values)
+    median_my_hfd = np.median(my_hfd_values)
+    median_phd_hfd = np.median(phd_hfd_values)
+
+    return median_fwhm, median_sep_hfd, median_my_hfd, median_phd_hfd
 
 
 def find_focus_position(focuser_positions, fwhm_curve_dp, hfd_curve_dps, plot=False):
@@ -145,7 +183,7 @@ def plot_fit(focuser_positions, fwhm_curve_dp, hfd_curve_dps, fwhm_fit, hfd_fits
         ax2.plot(focuser_positions, hfd_curve_dp, 'o', color=c, label=f'{method} HFD')
         fit = hfd_fits[method]
         y_fit = np.polyval(fit, x_fit)
-        ax2.plot(x_fit, y_fit, color=c, label='{method} HFD Fit')
+        ax2.plot(x_fit, y_fit, color=c, label=f'{method} HFD Fit')
         hfd_min_value = -fit[1] / (2 * fit[0])
 
         ax2.axvline(hfd_min_value, color=c, linestyle='--', label=f'Minimum {method} HFD: {hfd_min_value:.2f}')
