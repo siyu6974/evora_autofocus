@@ -55,28 +55,6 @@ function App() {
       });
   };
 
-  const handleAnalyzeButtonClick = async () => {
-    const res = await fetch(`${backendUrl}/api/analyze`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        sid
-      })
-    })
-    .then(response => {
-      if (!response.ok) {
-        throw new Error('Network response was not ok');
-      }
-      return response.json();
-    })
-    .then(data => {
-      console.log('Response from backend:', data);
-      fetchPlot();
-    })
-  };
-
   const fetchPlot = async () => {
     const res = await fetch(`${backendUrl}/plot/${sid}`, {
     });
@@ -128,7 +106,6 @@ function App() {
           <button onClick={handleSendButtonClick}>Send</button>
           
         </div>
-        <button onClick={handleAnalyzeButtonClick}>Analyze</button>
         <button onClick={handleResetButtonClick}>Reset</button>
         {img && (
           <img src={img} alt="An example image" />

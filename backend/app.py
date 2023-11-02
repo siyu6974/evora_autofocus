@@ -31,14 +31,7 @@ import matplotlib
 matplotlib.use('Agg')  # turn off gui
 from flask import Response
 
-@app.route('/api/analyze', methods=['POST'])
-def analyze():
-    payload = request.get_json()
-    sid = payload['sid']
-    if sid not in SessionStorage:
-        return Response(status=404)
-    
-    session = SessionStorage[sid]
+def analyze(session):
     fwhm_metrics = session.fwhm_metrics
     focuser_positons = session.focuser_positons
 
@@ -48,13 +41,10 @@ def analyze():
         "PHD": [dp['PHD'] for dp in session.hfd_metrics]
     }
     fwhm_min, hfd_min, fwhm_fit, hfd_fits = find_focus_position(focuser_positons, fwhm_metrics, hfd_curve_dps)
-    SessionStorage[sid].fwhm_fit = fwhm_fit
-    SessionStorage[sid].hfd_fits = hfd_fits
+    session.fwhm_fit = fwhm_fit
+    session.hfd_fits = hfd_fits
 
-    return jsonify({
-        "fwhm_min": fwhm_min, 
-        "hfd_min": hfd_min
-    })   
+    return fwhm_min, hfd_min
 
 
 @app.route('/plot/<sid>')
@@ -115,7 +105,8 @@ def focus_position():
     session.fwhm_metrics.append(median_fwhm)
     session.files.append(filename)
     logging.info(f"median_fwhm: {median_fwhm} median_sep_hfd: {median_sep_hfd} median_my_hfd: {median_my_hfd} median_phd_hfd: {median_phd_hfd}")
-    
+    if len(session.focuser_positons) >= 3:
+        analyze(session=session)
     return jsonify(session.serialize())
 
 
