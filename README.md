@@ -8,7 +8,7 @@
 - Make sure DEBUG is set to False in `settings.py`
 - Install the requirements with `pip install -r requirements.txt`
 
-# Usage (version 0.2)
+# Usage (version 0.3)
 
 0. start the backend with `flask --app backend.app run -p 5678`, and the frontend with `npm start`
 
@@ -22,4 +22,6 @@
 
 3. Repeat step 1 and 2 while adjusting the focuser position
 
-4. Hit analyze to get the best focus position
+4. After you have more than 3 data points, fitted curve will be shown
+
+5. Reset or refresh the page to start over 
