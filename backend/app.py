@@ -11,6 +11,7 @@ import logging
 logging.basicConfig(level=logging.INFO)
 import settings
 from models import FocusSession
+from datetime import datetime, timedelta
 
 
 app = Flask(__name__)
@@ -86,6 +87,7 @@ def reset():
 
 @app.route('/api/add_focus_position', methods=['POST'])
 def focus_position():
+    clean_old_sessions()
     payload = request.get_json()
     sid = payload['sid']
     if sid not in SessionStorage:
@@ -117,6 +119,14 @@ def focus_position():
     return jsonify(session.serialize())
 
 
+def clean_old_sessions():
+    now = datetime.now()
+    
+    for sid in list(SessionStorage):
+        timestamp = datetime.fromtimestamp(int(sid)/1000)
+        if now - timestamp > timedelta(days=30):
+            del SessionStorage[sid]
+
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=settings.DEBUG)
