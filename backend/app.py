@@ -25,7 +25,6 @@ def index():
 
 
 from flask import Flask, jsonify, make_response, send_file
-import io
 from matplotlib import pyplot as plt
 import matplotlib
 matplotlib.use('Agg')  # turn off gui
@@ -43,7 +42,9 @@ def analyze(session):
     fwhm_min, hfd_min, fwhm_fit, hfd_fits = find_focus_position(focuser_positons, fwhm_metrics, hfd_curve_dps)
     session.fwhm_fit = fwhm_fit
     session.hfd_fits = hfd_fits
-
+    session.predicted_min_fwhm = fwhm_min
+    session.predicted_min_hfd = hfd_min
+    
     return fwhm_min, hfd_min
 
 
@@ -75,8 +76,8 @@ def reset():
     })
 
 
-@app.route('/api/add_focus_position', methods=['POST'])
-def focus_position():
+@app.route('/api/add_focus_datapoint', methods=['POST'])
+def add_focus_datapoint():
     clean_old_sessions()
     payload = request.get_json()
     sid = payload['sid']

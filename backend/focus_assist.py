@@ -151,7 +151,7 @@ def find_focus_position(focuser_positions, fwhm_curve_dp, hfd_curve_dps):
 
 
 def plot_fit(focuser_positions, fwhm_curve_dp, hfd_curve_dps, fwhm_fit, hfd_fits):
-    should_plot_fit = len(fwhm_fit) > 0
+    should_plot_fit = fwhm_fit is not None and len(fwhm_fit) > 0
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 8))
     ax1.set_ylabel('FWHM (pixels)')
     ax1.set_title('Focus vs FWHM')

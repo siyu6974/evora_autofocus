@@ -33,7 +33,7 @@ function App() {
     // Send request to backend with focuserPosition and filename
     console.log(`Sending request to backend with focuserPosition: ${focuserPosition} and filename: ${filename}`);
 
-    fetch(`${backendUrl}/api/add_focus_position`, {
+    fetch(`${backendUrl}/api/add_focus_datapoint`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
