@@ -32,5 +32,5 @@ for filepath in sys.argv[1:]:
     new_path = f"{directory}/{new_name}"
 
     # convert to 16 bit
-    hdu = fits.PrimaryHDU(data=image_data.astype(np.uint16))
+    hdu = fits.PrimaryHDU(data=image_data.astype(np.uint16), header=h)
     hdu.writeto(new_path)

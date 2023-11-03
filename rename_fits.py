@@ -31,5 +31,5 @@ for filepath in sys.argv[1:]:
     print(new_name)
     new_path = f"{directory}/{new_name}"
 
-    hdu = fits.PrimaryHDU(data=image_data)
+    hdu = fits.PrimaryHDU(data=image_data, header=h)
     hdu.writeto(new_path)
