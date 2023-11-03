@@ -3,10 +3,10 @@ import matplotlib.pyplot as plt
 from astropy.io import fits
 import io
 import sep
-from settings import SEP_MIN_AREA
+from settings import SEP_MIN_AREA, MAX_SOURCES
 import logging
 
-def extract_source(data, max_sources=50):
+def extract_source(data, max_sources=MAX_SOURCES):
     # Calculate background statistics
     data = data.astype(np.float32)
 
