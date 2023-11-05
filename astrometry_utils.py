@@ -9,7 +9,8 @@ logging.basicConfig(level=logging.INFO)
 
 MAX_SOURCES = 50
 CACHE_DIR = "/Users/siyu/Downloads/astrometry-index"
-
+SEP_MIN_AREA = 40
+SEP_THRESHOLD = 5
 
 def logodds_callback(logodds_list: list[float]) -> astrometry.Action:
     if len(logodds_list) < 3:
@@ -27,7 +28,7 @@ solver = astrometry.Solver(
 )
 
 
-def extract_sources(data):
+def extract_sources(data, plot=False):
     start_time = time.time()
 
     # Estimate the background and subtract it from the image
@@ -35,7 +36,7 @@ def extract_sources(data):
     signal = data - bkg
 
     # Extract sources from the image
-    sources = sep.extract(signal, thresh=1.5, err=bkg.globalrms, minarea=40)
+    sources = sep.extract(signal, thresh=SEP_THRESHOLD, err=bkg.globalrms, minarea=SEP_MIN_AREA)
     if len(sources) > MAX_SOURCES:
         indices = np.linspace(0, len(sources)-1, MAX_SOURCES, dtype=int)
         sources = sources[indices]
@@ -47,6 +48,8 @@ def extract_sources(data):
     end_time = time.time()
     logging.info(f"SE took: {end_time - start_time} seconds")
 
+    if plot:
+        plot_sources(data, sources)
     return stars_xy
 
 def plot_sources(data, sources):
@@ -65,6 +68,9 @@ def plot_sources(data, sources):
 
 
 def solve(solver, stars_xy, size_hint=astrometry.SizeHint(0.4, 0.5), position_hint=None):
+    if len(stars_xy) < 3:
+        return astrometry.Solution(0, [])
+    
     start_time = time.time()
 
     solution = solver.solve(
@@ -99,13 +105,12 @@ def visualize_solution(solution_match, w, h) -> str:
 
 
 if __name__ == "__main__":
-    file_path = "/Users/siyu/Downloads/data/ecam/20231021/horsehead/2023-10-21T10-50-30_i_-79.25_300.0s_0093.fits"
+    file_path = "/Users/siyu/Downloads/data/20231028/_2023-10-28T08-36-51_r_-79.25_300.0s_0077.fits"
     hdul = fits.open(file_path)
     data = hdul[0].data
     data = data.astype(np.float32)
 
     stars_xy = extract_sources(data)
-    # plot_sources(data, stars_xy)    
     solution = solve(solver, stars_xy)
     
     if solution.has_match():
