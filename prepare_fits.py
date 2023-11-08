@@ -21,10 +21,10 @@ for filepath in args.filenames:
 
     directory = os.path.dirname(filepath)
     seq_nb = os.path.basename(filepath).split("-")[-1].split(".")[0]
-    temp = h["CCD-TEMP"]
-    filter_exp = h["FILTER"]
-    exp_time = h["EXPTIME"]
-    date_obs = h["DATE-OBS"].split(".")[0]
+    temp = h.get("CCD-TEMP", "unknown_temp")
+    filter_exp = h.get("FILTER", "unknown_filter")
+    exp_time = h.get("EXPTIME", "unknown_exp_time")
+    date_obs = h.get("DATE-OBS", "unknown_date_obs").split(".")[0]
     new_name = f"{date_obs}_{filter_exp}_{temp}_{exp_time}s_{seq_nb}.fits"
     new_name = new_name.replace(":", "-")
 
