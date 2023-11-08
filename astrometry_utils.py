@@ -37,6 +37,10 @@ def extract_sources(data, plot=False):
 
     # Extract sources from the image
     sources = sep.extract(signal, thresh=SEP_THRESHOLD, err=bkg.globalrms, minarea=SEP_MIN_AREA)
+    # Filter out non-circular sources
+    ecc = np.sqrt(1 - np.square(sources['b'] / sources['a']))
+    sources = sources[ecc < 0.5]
+
     if len(sources) > MAX_SOURCES:
         indices = np.linspace(0, len(sources)-1, MAX_SOURCES, dtype=int)
         sources = sources[indices]
